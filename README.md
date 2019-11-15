@@ -1,2 +1,2 @@
-# floodlight-test
+# floodlightTest
 Testing custom floodlight codes
