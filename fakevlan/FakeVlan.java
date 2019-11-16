@@ -37,12 +37,14 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 	}
 	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pi,Ethernet eth) {
 		OFFactory myFactory = sw.getOFFactory();
-		Match match = myFactory.buildMatch().setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofRawVid(eth.getVlanID()))
-			/*.setExact(MatchField.ETH_SRC,eth.getSourceMACAddress())*/
+		Match match = myFactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.IPv4)
+			.setExact(MatchField.ETH_SRC,eth.getSourceMACAddress())
+			.setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofVlanVid(VlanVid.ofVlan(eth.getVlanID())))
 			.build();
 		return match;
 	}
-	void writeFlowMod(Match m,IOFSwitch sw){
+	void writeFlowMod(Match m,IOFSwitch sw,Ethernet eth){
+		OFFactory factory = sw.getOFFactory();
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		OFOxms oxms = sw.getOFFactory().oxms();
 		fmb.setMatch(m);
@@ -52,10 +54,10 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		fmb.setPriority(134);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		List<OFAction> al = new ArrayList<OFAction>();
-		OFAction ethAction = sw.getOFFactory().actions().buildSetField().setField(
-				oxms.buildEthSrc().setValue(MacAddress.of("12:23:3a:34:34:a3")).build()
-				).build();
+		OFAction ethAction = factory.actions().setField(oxms.ethSrc(eth.getSourceMACAddress()));
+		OFAction vlanAction = factory.actions().setField(oxms.vlanVid(OFVlanVidMatch.ofVlanVid(VlanVid.ofVlan(100))));
 		al.add(ethAction);
+		al.add(vlanAction);
 		OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setHardTimeout(0)
@@ -75,7 +77,7 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		eth.setVlanID((short) 100);
 		Match match = createMatchFromPacket(sw,vmsg,eth);
-		writeFlowMod(match,sw);
+		writeFlowMod(match,sw,eth);
 		return Command.CONTINUE;
 	}
 
