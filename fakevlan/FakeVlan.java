@@ -33,17 +33,17 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
 		
-		return false;
+		return name=="PrintVlan";
 	}
 	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pi,Ethernet eth) {
 		OFFactory myFactory = sw.getOFFactory();
-		Match match = myFactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.IPv4)
-			.setExact(MatchField.ETH_SRC,eth.getSourceMACAddress())
+		Match match = myFactory.buildMatch()
 			.setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofVlanVid(VlanVid.ofVlan(eth.getVlanID())))
+			//.setExact(MatchField.ETH_DST,eth.getSourceMACAddress())
 			.build();
 		return match;
 	}
-	void writeFlowMod(Match m,IOFSwitch sw,Ethernet eth){
+	void writeFlowMod(Match m,IOFSwitch sw){
 		OFFactory factory = sw.getOFFactory();
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		OFOxms oxms = sw.getOFFactory().oxms();
@@ -54,9 +54,8 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		fmb.setPriority(134);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		List<OFAction> al = new ArrayList<OFAction>();
-		OFAction ethAction = factory.actions().setField(oxms.ethSrc(eth.getSourceMACAddress()));
 		OFAction vlanAction = factory.actions().setField(oxms.vlanVid(OFVlanVidMatch.ofVlanVid(VlanVid.ofVlan(100))));
-		al.add(ethAction);
+	//	al.add(ethAction);
 		al.add(vlanAction);
 		OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
 			.setBufferId(OFBufferId.NO_BUFFER)
@@ -77,7 +76,7 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		eth.setVlanID((short) 100);
 		Match match = createMatchFromPacket(sw,vmsg,eth);
-		writeFlowMod(match,sw,eth);
+		writeFlowMod(match,sw);
 		return Command.CONTINUE;
 	}
 
