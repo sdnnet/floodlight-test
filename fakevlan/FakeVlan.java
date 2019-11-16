@@ -1,40 +1,20 @@
 package net.floodlightcontroller.floodlightTest.fakevlan;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFFlowAdd;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPacketIn;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
-import org.projectfloodlight.openflow.protocol.action.OFActions;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
-import org.projectfloodlight.openflow.protocol.instruction.OFInstructions;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.OFBufferId;
-import org.projectfloodlight.openflow.types.OFVlanVidMatch;
-import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.action.*;
+import org.projectfloodlight.openflow.protocol.instruction.*;
+import org.projectfloodlight.openflow.protocol.match.*;
+import org.projectfloodlight.openflow.protocol.oxm.*;
+import org.projectfloodlight.openflow.types.*;
 import org.python.antlr.PythonParser.return_stmt_return;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.*;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFMessageListener;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import net.floodlightcontroller.core.module.FloodlightModuleException;
-import net.floodlightcontroller.core.module.IFloodlightModule;
-import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.core.*;
+import net.floodlightcontroller.core.module.*;
+import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.util.FlowModUtils;
 
 public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 
@@ -42,13 +22,11 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 	protected IFloodlightProviderService floodlightProviderService;
 	@Override
 	public String getName() {
-		
 		return "Fake Vlan";
 	}
 
 	@Override
 	public boolean isCallbackOrderingPrereq(OFType type, String name) {
-		
 		return false;
 	}
 
@@ -57,24 +35,38 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		
 		return false;
 	}
-	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pi) {
+	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pi,Ethernet eth) {
 		OFFactory myFactory = sw.getOFFactory();
-		Match match = myFactory.buildMatch().setExact(MatchField.ETH_TYPE, EthType.IPv4).build();
+		Match match = myFactory.buildMatch().setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofRawVid(eth.getVlanID()))
+			/*.setExact(MatchField.ETH_SRC,eth.getSourceMACAddress())*/
+			.build();
 		return match;
 	}
 	void writeFlowMod(Match m,IOFSwitch sw){
-		OFFactory factory = sw.getOFFactory();
-		OFActions actions = factory.actions();
-		OFOxms oxms = factory.oxms();
-		OFActionSetField fieldAction = actions.buildSetField().setField(oxms.buildVlanVid().setValue(OFVlanVidMatch.ofRawVid((short)100)).build()).build();
-		ArrayList<OFAction> actionList = new ArrayList<>();
-		actionList.add(fieldAction);
-		OFInstructions instructions = factory.instructions();
-		OFInstructionApplyActions applyActions = instructions.buildApplyActions().setActions(actionList).build();
-		ArrayList<OFInstruction> insList = new ArrayList<>();
-		insList.add(applyActions);
-		OFFlowAdd mod = factory.buildFlowAdd().setBufferId(OFBufferId.NO_BUFFER).setHardTimeout(0).setIdleTimeout(0).setMatch(m).setPriority(134).setInstructions(insList).build();
-		sw.write(mod);
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		fmb.setMatch(m);
+		fmb.setCookie((U64.of(this.hashCode())));
+		fmb.setIdleTimeout(5);
+		fmb.setHardTimeout(0);
+		fmb.setPriority(134);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		List<OFAction> al = new ArrayList<OFAction>();
+		OFAction ethAction = sw.getOFFactory().actions().buildSetField().setField(
+				oxms.buildEthSrc().setValue(MacAddress.of("12:23:3a:34:34:a3")).build()
+				).build();
+		al.add(ethAction);
+		OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
+			.setBufferId(OFBufferId.NO_BUFFER)
+			.setHardTimeout(0)
+			.setIdleTimeout(10)
+			.setPriority(3276)
+			.setMatch(m)
+			.setActions(al)
+			.setTableId(TableId.of(3))
+			.build();
+		// and write it out
+		sw.write(flowAdd);
 	}
 	@Override
 	public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
@@ -82,8 +74,8 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 		OFPacketIn vmsg = (OFPacketIn)msg;
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		eth.setVlanID((short) 100);
-		Match match = createMatchFromPacket(sw,vmsg);
-		//writeFlowMod(match,sw);
+		Match match = createMatchFromPacket(sw,vmsg,eth);
+		writeFlowMod(match,sw);
 		return Command.CONTINUE;
 	}
 
