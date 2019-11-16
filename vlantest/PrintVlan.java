@@ -17,12 +17,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.learningswitch.LearningSwitch;
 import net.floodlightcontroller.packet.Ethernet;
 
 public class PrintVlan implements IFloodlightModule,IOFMessageListener{
 
-	protected static Logger log = LoggerFactory.getLogger(LearningSwitch.class);
+	protected static Logger log = LoggerFactory.getLogger(PrintVlan.class);
 	protected IFloodlightProviderService floodlightProviderService;
 	@Override
 	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
