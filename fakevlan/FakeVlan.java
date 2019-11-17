@@ -45,17 +45,9 @@ public class FakeVlan implements IFloodlightModule , IOFMessageListener{
 	}
 	void writeFlowMod(Match m,IOFSwitch sw){
 		OFFactory factory = sw.getOFFactory();
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		OFOxms oxms = sw.getOFFactory().oxms();
-		fmb.setMatch(m);
-		fmb.setCookie((U64.of(this.hashCode())));
-		fmb.setIdleTimeout(5);
-		fmb.setHardTimeout(0);
-		fmb.setPriority(134);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		List<OFAction> al = new ArrayList<OFAction>();
 		OFAction vlanAction = factory.actions().setField(oxms.vlanVid(OFVlanVidMatch.ofVlanVid(VlanVid.ofVlan(100))));
-	//	al.add(ethAction);
 		al.add(vlanAction);
 		OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
 			.setBufferId(OFBufferId.NO_BUFFER)
