@@ -1,26 +1,9 @@
 package net.floodlightcontroller.floodlightTest.vlancomm;
-import java.util.*;
-
-import org.projectfloodlight.openflow.protocol.*;
-import org.projectfloodlight.openflow.protocol.action.*;
-import org.projectfloodlight.openflow.protocol.instruction.*;
-import org.projectfloodlight.openflow.protocol.match.*;
-import org.projectfloodlight.openflow.protocol.oxm.*;
-import org.projectfloodlight.openflow.types.*;
-import org.python.antlr.PythonParser.return_stmt_return;
-import org.slf4j.*;
-
-import net.floodlightcontroller.core.*;
-import net.floodlightcontroller.core.module.*;
-import net.floodlightcontroller.packet.*;
-import net.floodlightcontroller.util.FlowModUtils;
-
-
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
@@ -28,16 +11,18 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.projectfloodlight.openflow.protocol.match.*;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -50,7 +35,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.floodlightTest.*;
 
 public class VlanComm implements IFloodlightModule,IOFMessageListener{
 	protected static Logger log = LoggerFactory.getLogger(VlanComm.class);
@@ -121,25 +105,32 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		VlanVid srcVlanId = VlanVid.ofVlan(eth.getVlanID());
 		log.info("Packet recieved: {}",eth.getEtherType());
-		//VlanVid dstVlanId = VlanVid.ofVlan(eth.getVlanID());
 		if(eth.getEtherType().equals(EthType.IPv4)){
 			log.info("IP PACKET RECEIVED");
 			IPv4Address srcIp = ((IPv4)eth.getPayload()).getSourceAddress();
-			ipToVlanMap.put(srcIp,srcVlanId);
 			IPv4Address dstIp = ((IPv4)eth.getPayload()).getDestinationAddress();
+			if(!ipToVlanMap.containsKey(srcIp)){
+				ipToVlanMap.put(srcIp,srcVlanId);
+			}
 			if(ipToVlanMap.containsKey(dstIp)){
+				eth.setVlanID(ipToVlanMap.get(dstIp).getVlan());
 				Match match = createMatchFromPacket(sw,vmsg,dstIp,srcVlanId);
 				writeFlowMod(match,sw,dstIp);
 				log.info("WRITTEN PACKET");
 				return Command.CONTINUE;
 			}
-			else return Command.STOP;
+			else{
+				return Command.STOP;
+			}
 		}else if(eth.getEtherType().equals(EthType.ARP)){
 			ARP arp = (ARP) eth.getPayload();
 			IPv4Address srcIP = arp.getSenderProtocolAddress();
 			IPv4Address dstIP = arp.getTargetProtocolAddress();
-			ipToVlanMap.put(srcIP,srcVlanId);
+			if(!ipToVlanMap.containsKey(srcIP)){
+				ipToVlanMap.put(srcIP,srcVlanId);
+			}
 			if(ipToVlanMap.containsKey(dstIP)){
+				eth.setVlanID(ipToVlanMap.get(dstIP).getVlan());
 				Match match = createMatchFromPacketARP(sw,vmsg,dstIP,srcVlanId);
 				log.info("Source IP : {}",srcIP);
 				log.info("Destination IP: {}",dstIP);
@@ -149,7 +140,9 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 				writeFlowMod(match,sw,dstIP);
 				return Command.CONTINUE;
 			}
-			else return Command.STOP;
+			else{
+				return Command.STOP;
+			}
 		}
 		return Command.CONTINUE;
 	}
