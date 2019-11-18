@@ -1,4 +1,20 @@
 package net.floodlightcontroller.floodlightTest.vlancomm;
+import java.util.*;
+
+import org.projectfloodlight.openflow.protocol.*;
+import org.projectfloodlight.openflow.protocol.action.*;
+import org.projectfloodlight.openflow.protocol.instruction.*;
+import org.projectfloodlight.openflow.protocol.match.*;
+import org.projectfloodlight.openflow.protocol.oxm.*;
+import org.projectfloodlight.openflow.types.*;
+import org.python.antlr.PythonParser.return_stmt_return;
+import org.slf4j.*;
+
+import net.floodlightcontroller.core.*;
+import net.floodlightcontroller.core.module.*;
+import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.util.FlowModUtils;
+
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
@@ -15,6 +31,8 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
+import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U64;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +50,10 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.floodlightTest.*;
 
 public class VlanComm implements IFloodlightModule,IOFMessageListener{
 	protected static Logger log = LoggerFactory.getLogger(VlanComm.class);
-
 	
 	protected IFloodlightProviderService floodlightProviderService;
 	protected Map<IPv4Address,VlanVid> ipToVlanMap; 
@@ -55,9 +73,18 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		// TODO Auto-generated method stub
 		return true;
 	}
+	Match createMatchFromPacketARP(IOFSwitch sw,OFPacketIn pin,IPv4Address addr,VlanVid vid){
+		OFFactory myFactory = sw.getOFFactory();
+		Match match = myFactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.ARP)
+			.setExact(MatchField.ARP_TPA, addr)
+			.setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofVlanVid(vid))
+			.build();
+		return match;
+	}
 	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pin,IPv4Address addr,VlanVid vid){
 		OFFactory myFactory = sw.getOFFactory();
-		Match match = myFactory.buildMatch().setExact(MatchField.IPV4_DST, addr)
+		Match match = myFactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.IPv4)
+			.setExact(MatchField.IPV4_DST, addr)
 			.setExact(MatchField.VLAN_VID,OFVlanVidMatch.ofVlanVid(vid))
 			.build();
 		return match;
@@ -66,6 +93,7 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		OFFactory myFactory = sw.getOFFactory();
 		OFOxms oxms = sw.getOFFactory().oxms();
 		List<OFAction> actionList = new ArrayList<OFAction>();
+		log.info("ID: {}",ipToVlanMap.get(dstIp).getVlan());
 		OFAction setDstVlan= myFactory.actions().buildSetField()
 			.setField(
 			oxms.buildVlanVid()
@@ -76,7 +104,13 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		actionList.add(setDstVlan);
 		OFFlowAdd flowadd = sw.getOFFactory().buildFlowAdd()
 				.setMatch(match)
+				.setHardTimeout(0)
+				.setIdleTimeout(0)
+				.setBufferId(OFBufferId.NO_BUFFER)
 				.setActions(actionList)
+				.setPriority(20000)
+				.setTableId(TableId.of(3))
+				.setCookie(U64.of(14312))
 				.build();
 		sw.write(flowadd);		
 	}
@@ -86,8 +120,10 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		OFPacketIn vmsg = (OFPacketIn)msg;
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 		VlanVid srcVlanId = VlanVid.ofVlan(eth.getVlanID());
+		log.info("Packet recieved: {}",eth.getEtherType());
 		//VlanVid dstVlanId = VlanVid.ofVlan(eth.getVlanID());
 		if(eth.getEtherType().equals(EthType.IPv4)){
+			log.info("IP PACKET RECEIVED");
 			IPv4Address srcIp = ((IPv4)eth.getPayload()).getSourceAddress();
 			ipToVlanMap.put(srcIp,srcVlanId);
 			IPv4Address dstIp = ((IPv4)eth.getPayload()).getDestinationAddress();
@@ -104,9 +140,13 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 			IPv4Address dstIP = arp.getTargetProtocolAddress();
 			ipToVlanMap.put(srcIP,srcVlanId);
 			if(ipToVlanMap.containsKey(dstIP)){
-				Match match = createMatchFromPacket(sw,vmsg,dstIP,srcVlanId);
-				writeFlowMod(match,sw,dstIP);
+				Match match = createMatchFromPacketARP(sw,vmsg,dstIP,srcVlanId);
+				log.info("Source IP : {}",srcIP);
+				log.info("Destination IP: {}",dstIP);
 				log.info("ARP PACKET RECEIVED");
+				log.info("target protocol: {}",arp.getTargetProtocolAddress());
+				log.info("vlan id: {}",eth.getVlanID());
+				writeFlowMod(match,sw,dstIP);
 				return Command.CONTINUE;
 			}
 			else return Command.STOP;
