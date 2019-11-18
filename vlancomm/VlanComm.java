@@ -6,8 +6,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -106,13 +104,14 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 			IPv4Address dstIP = arp.getTargetProtocolAddress();
 			ipToVlanMap.put(srcIP,srcVlanId);
 			if(ipToVlanMap.containsKey(dstIP)){
-			Match match = createMatchFromPacket(sw,vmsg,dstIP,srcVlanId);
-			writeFlowMod(match,sw,dstIP);
-			log.info("ARP PACKET RECEIVED");
-			return Command.CONTINUE;
+				Match match = createMatchFromPacket(sw,vmsg,dstIP,srcVlanId);
+				writeFlowMod(match,sw,dstIP);
+				log.info("ARP PACKET RECEIVED");
+				return Command.CONTINUE;
 			}
 			else return Command.STOP;
 		}
+		return Command.CONTINUE;
 	}
 
 	@Override
@@ -146,3 +145,4 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
 
 	}
+}
