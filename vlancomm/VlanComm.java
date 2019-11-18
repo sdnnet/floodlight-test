@@ -113,7 +113,7 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 				ipToVlanMap.put(srcIp,srcVlanId);
 			}
 			if(ipToVlanMap.containsKey(dstIp)){
-				eth.setVlanID(ipToVlanMap.get(dstIp).getVlan());
+//				eth.setVlanID(ipToVlanMap.get(dstIp).getVlan());
 				Match match = createMatchFromPacket(sw,vmsg,dstIp,srcVlanId);
 				writeFlowMod(match,sw,dstIp);
 				log.info("WRITTEN PACKET");
@@ -130,7 +130,7 @@ public class VlanComm implements IFloodlightModule,IOFMessageListener{
 				ipToVlanMap.put(srcIP,srcVlanId);
 			}
 			if(ipToVlanMap.containsKey(dstIP)){
-				eth.setVlanID(ipToVlanMap.get(dstIP).getVlan());
+//				eth.setVlanID(ipToVlanMap.get(dstIP).getVlan());
 				Match match = createMatchFromPacketARP(sw,vmsg,dstIP,srcVlanId);
 				log.info("Source IP : {}",srcIP);
 				log.info("Destination IP: {}",dstIP);

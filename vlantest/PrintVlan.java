@@ -69,7 +69,7 @@ public class PrintVlan implements IFloodlightModule,IOFMessageListener{
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 	@Override
