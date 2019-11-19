@@ -17,9 +17,11 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
 import org.projectfloodlight.openflow.types.TableId;
+import org.projectfloodlight.openflow.types.U128;
 import org.projectfloodlight.openflow.types.VlanVid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,11 +87,14 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 			)
 			.build();
 		actionList.add(vidAction);
-		OFFlowAdd flowAdd = factory.buildFlowAdd().setTableId(TableId.of(1))
+
+		OFFlowAdd flowAdd = factory.buildFlowAdd()
 			.setHardTimeout(0)
+			.setBufferId(OFBufferId.NO_BUFFER)
 			.setIdleTimeout(0)
 			.setActions(actionList)
-			.setPriority(32000)
+			.setPriority(1000)
+			.setMatch(match)
 			.build();
 		sw.write(flowAdd);
 	}
@@ -111,6 +116,7 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 			}
 			Match match = createArpMatch(sw,vid,destIp);
 			writeFlowMod(sw,match,map.get(destIp));
+			eth.setVlanID(vid);
 			return Command.CONTINUE;
 		}else if(ethType.equals(EthType.IPv4)){
 			IPv4 ip = (IPv4) eth.getPayload();
