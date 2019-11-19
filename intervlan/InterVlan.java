@@ -17,6 +17,7 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.OFVlanVidMatch;
@@ -42,6 +43,7 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 	protected static Logger log = LoggerFactory.getLogger(InterVlan.class);
 	protected IFloodlightProviderService floodlightProviderService;
 	protected HashMap<IPv4Address,Short> map;
+	protected HashMap<MacAddress,OFPort> table;
 	@Override
 	public String getName() {
 		// TODO Auto-generated method stub
@@ -87,7 +89,8 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 			)
 			.build();
 		actionList.add(vidAction);
-
+		OFAction floodAction = actions.buildOutput().setPort(OFPort.FLOOD).build();
+		actionList.add(floodAction);
 		OFFlowAdd flowAdd = factory.buildFlowAdd()
 			.setHardTimeout(0)
 			.setBufferId(OFBufferId.NO_BUFFER)
@@ -157,6 +160,7 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 		// TODO Auto-generated method stub
 		floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
 		map = new HashMap<>();
+		table = new HashMap<>();
 	}
 
 	@Override
