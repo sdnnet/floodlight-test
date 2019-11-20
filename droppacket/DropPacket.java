@@ -60,7 +60,7 @@ public class DropPacket implements IFloodlightModule, IOFMessageListener {
 	Match createMatchFromPacketARP(IOFSwitch sw,OFPacketIn pi,IPv4Address badIp){
 		OFFactory myfactory = sw.getOFFactory();
 		Match match = myfactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.ARP)
-			.setExact(MatchField.ARP_TPA,badIp)
+			.setExact(MatchField.ARP_SPA,badIp)
 			.build();
 		return match;
 	}
