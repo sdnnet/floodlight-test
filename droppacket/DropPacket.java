@@ -1,16 +1,25 @@
+package net.floodlightcontroller.floodlightTest.droppacket;
+
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.protocol.OFFactory;
+import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.OFBufferId;
 
 import net.floodlightcontroller.core.FloodlightContext;
+import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -19,8 +28,10 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.IPv4;
 
 public class DropPacket implements IFloodlightModule, IOFMessageListener {
+	protected IFloodlightProviderService floodlightProviderService;
 
 	@Override
 	public String getName() {
@@ -53,7 +64,7 @@ public class DropPacket implements IFloodlightModule, IOFMessageListener {
 			.build();
 		return match;
 	}
-	void writeFlowMod(Match Match, IOFSwitch sw, IPv4Address badIp){
+	void writeFlowMod(Match match, IOFSwitch sw, IPv4Address badIp){
 		OFOxms oxms = sw.getOFFactory().oxms();
 		List<OFAction> actionList = new ArrayList<OFAction>();
 
@@ -69,6 +80,7 @@ public class DropPacket implements IFloodlightModule, IOFMessageListener {
 	}
 
 	@Override
+	public Command receive(IOFSwitch sw, OFMessage msg,FloodlightContext cntx){
 		// TODO Auto-generated method stub
 		OFPacketIn vmsg = (OFPacketIn)msg;
 		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
