@@ -41,80 +41,87 @@ public class DropPacket implements IFloodlightModule, IOFMessageListener {
 	}
 	Match createMatchFromPacket(IOFSwitch sw,OFPacketIn pi,IPv4Address badIp){
 		OFFactory myfactory = sw.getOFFactory();
-		Match match = myfactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.IPv4);
+		Match match = myfactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.IPv4)
 			.setExact(MatchField.IPV4_SRC,badIp)
 			.build();
 		return match;
 	}
 	Match createMatchFromPacketARP(IOFSwitch sw,OFPacketIn pi,IPv4Address badIp){
 		OFFactory myfactory = sw.getOFFactory();
-		Match match = myfactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.ARP);
-		.setExact(MatchField.ARP_TPA,badIp)
-		.build();
+		Match match = myfactory.buildMatch().setExact(MatchField.ETH_TYPE,EthType.ARP)
+			.setExact(MatchField.ARP_TPA,badIp)
+			.build();
 		return match;
 	}
 	void writeFlowMod(Match Match, IOFSwitch sw, IPv4Address badIp){
 		OFOxms oxms = sw.getOFFactory().oxms();
 		List<OFAction> actionList = new ArrayList<OFAction>();
-		OFAction checkBadIp = myfactory.actions().buildSetField()
-			.SetField(
-			oxms.build
+
+		OFFlowAdd flowadd = sw.getOFFactory().buildFlowAdd()
+			.setMatch(match)
+			.setHardTimeout(0)
+			.setIdleTimeout(0)
+			.setBufferId(OFBufferId.NO_BUFFER)
+			.setActions(actionList)
+			.setPriority(20000)
+			.build();
+		sw.write(flowadd);		
 	}
 
-		@Oblverride
-		public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-			// TODO Auto-generated method stub
-			OFPacketIn vmsg = (OFPacketIn)msg;
-			Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-			IPv4Address badIp = IPv4Address.of("10.4.0.3");
-			if(eth.getEtherType().equals(EthType.ARP)){
-				ARP arp = (ARP)eth.getPayload();
-				IPv4Address srcIp = arp.getSenderProtocolAddress();
-				if(srcIp.equals(badIp)){
-					Match match = createMatchFromPacketARP(sw,vmsg,badIp);
-					writeFlowMod(match,sw,badIp)
-				}
-				else return Command.CONTINUE;
+	@Override
+		// TODO Auto-generated method stub
+		OFPacketIn vmsg = (OFPacketIn)msg;
+		Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+		IPv4Address badIp = IPv4Address.of("10.4.0.3");
+		if(eth.getEtherType().equals(EthType.ARP)){
+			ARP arp = (ARP)eth.getPayload();
+			IPv4Address srcIp = arp.getSenderProtocolAddress();
+			if(srcIp.equals(badIp)){
+				Match match = createMatchFromPacketARP(sw,vmsg,badIp);
+				writeFlowMod(match,sw,badIp);
 			}
-			else if(eth.getEtherType().equals(EthType.IPv4)){
-				IPv4Address srcIP = ((IPv4)eth.getPayload()).getSourceAddress();
-				if(srcIP.equals(badIp)){
-					Match match = createMatchFromPacket(sw,vmsg,badIp);
-					writeFlowMod(match,sw,badIp);
-				}
-
-				@Override
-				public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-					// TODO Auto-generated method stub
-					return null;
-				}
-
-				@Override
-				public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-					// TODO Auto-generated method stub
-					return null;
-				}
-
-				@Override
-				public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-					// TODO Auto-generated method stub
-					return null;
-				}
-
-				@Override
-				public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-					// TODO Auto-generated method stub
-					//
-					floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
-
-				}
-
-				@Override
-				public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-					// TODO Auto-generated method stub
-
-					floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
-
-				}
+			else return Command.CONTINUE;
+		}
+		else if(eth.getEtherType().equals(EthType.IPv4)){
+			IPv4Address srcIP = ((IPv4)eth.getPayload()).getSourceAddress();
+			if(srcIP.equals(badIp)){
+				Match match = createMatchFromPacket(sw,vmsg,badIp);
+				writeFlowMod(match,sw,badIp);
 			}
+			else return Command.CONTINUE;
+		}
+		return Command.CONTINUE;
+	}
+	@Override
+	public Collection<Class<? extends IFloodlightService>> getModuleServices() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
+	@Override
+	public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void init(FloodlightModuleContext context) throws FloodlightModuleException {
+		// TODO Auto-generated method stub
+		//
+		floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
+
+	}
+
+	@Override
+	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+		// TODO Auto-generated method stub
+
+		floodlightProviderService.addOFMessageListener(OFType.PACKET_IN, this);
+	}
+}
