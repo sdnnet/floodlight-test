@@ -60,7 +60,7 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 	@Override
 	public boolean isCallbackOrderingPostreq(OFType type, String name) {
 		// TODO Auto-generated method stub
-		return name.equals("Forwarding");
+		return name.equals("Learning Switch");
 	}
 	private Match createArpMatch(IOFSwitch sw,short vid,IPv4Address destIp){
 		OFFactory factory =  sw.getOFFactory();
@@ -137,9 +137,13 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 				return Command.STOP;
 			}
 			Match match = createIpMatch(sw,vid,destIp);
+			eth.setVlanID(vid);
 			writeFlowMod(sw,match,map.get(destIp));
 			return Command.CONTINUE;
-		}else return Command.CONTINUE;
+		}else {
+			eth.setVlanID(vid);
+			return Command.CONTINUE;
+		}
 	}
 
 	@Override

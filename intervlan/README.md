@@ -9,4 +9,4 @@ Use ovs-ofctl dump-flows to check flows in OVS and wireshark/tcpdump to check pa
 ### Result
 Hosts in same network but in different VLAN id can communicate using SDN if we manage the VLAN ID carefully.
 
-Our Learning switch module install flows based on destination mac only and does not match vlan id for it, however it is very easy to use standard learning switch module with our module just make sure it installs rule in table-1 of openflow switch.
+Our Learning switch module install flows based on destination mac only and does not match vlan id for it, however it is very easy to use standard learning switch module with our module just make sure it installs rule in table-1 of openflow switch and that learning switch module returns name `Learning Switch` from getName() method.
