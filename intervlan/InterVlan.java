@@ -12,6 +12,7 @@ import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
@@ -89,13 +90,17 @@ public class InterVlan implements IFloodlightModule, IOFMessageListener {
 			)
 			.build();
 		actionList.add(vidAction);
-		OFAction floodAction = actions.buildOutput().setPort(OFPort.FLOOD).build();
-		actionList.add(floodAction);
+		OFInstruction tableInstruction = factory.instructions().buildGotoTable().setTableId(TableId.of(1)).build();
+		ArrayList<OFInstruction> insList = new ArrayList<>();
+		insList.add(factory.instructions().applyActions(actionList));
+		insList.add(tableInstruction);
+		//OFAction floodAction = actions.buildOutput().setPort(OFPort.FLOOD).build();
+		//actionList.add(floodAction);
 		OFFlowAdd flowAdd = factory.buildFlowAdd()
 			.setHardTimeout(0)
 			.setBufferId(OFBufferId.NO_BUFFER)
 			.setIdleTimeout(0)
-			.setActions(actionList)
+			.setInstructions(insList)
 			.setPriority(1000)
 			.setMatch(match)
 			.build();
