@@ -69,7 +69,7 @@ public class LearningSwitch implements IFloodlightModule, IOFMessageListener {
 			.setMatch(match)
 			.setPriority(1)
 			.setBufferId(OFBufferId.NO_BUFFER)
-			build();
+			.build();
 		sw.write(flow);
 	}	
 	Match createMatch(IOFSwitch sw,MacAddress mac){
